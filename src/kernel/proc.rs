@@ -387,7 +387,7 @@ impl Procs {
                     // Set up new context to start executing at forkret,
                     // which returns to user space.
                     data.context.write_zero();
-                    data.context.ra = fork_ret as usize;
+                    data.context.ra = fork_ret as *const () as usize;
                     data.context.sp = data.kstack.into_usize() + PGSIZE * STACK_PAGE_NUM;
                     return Ok((p, lock));
                 }
@@ -452,7 +452,7 @@ impl Proc {
         // to/from user space, so not PTE_U
         if let Err(err) = uvm.mappages(
             UVAddr::from(TRAMPOLINE),
-            PAddr::from(trampoline as usize),
+            PAddr::from(trampoline as *const () as usize),
             PGSIZE,
             PTE_R | PTE_X,
         ) {
@@ -550,8 +550,12 @@ pub fn user_init(initcode: &'static [u8]) {
         if phdr.p_msize < phdr.p_fsize {
             panic!("p_msize >= p_fsize");
         }
-        if phdr.p_vaddr + phdr.p_msize < phdr.p_msize {
-            panic!("p_vaddr + p_msize < p_msize");
+        if phdr
+            .p_vaddr
+            .checked_add(phdr.p_msize)
+            .map_or(true, |sum| sum < phdr.p_msize)
+        {
+            panic!("p_vaddr + p_msize overflow");
         }
         let va = UVAddr::from(phdr.p_vaddr);
         assert!(va.is_aligned(), "init program va's must be aligned");

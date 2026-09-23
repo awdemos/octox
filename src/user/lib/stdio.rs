@@ -16,31 +16,33 @@ static mut STDOUT: OnceLock<Mutex<File>> = OnceLock::new();
 static mut STDERR: OnceLock<Mutex<File>> = OnceLock::new();
 
 pub struct Stdin {
-    inner: &'static mut OnceLock<Mutex<File>>,
+    inner: *mut OnceLock<Mutex<File>>,
 }
 
 pub fn stdin() -> Stdin {
-    unsafe { Stdin { inner: &mut STDIN } }
+    Stdin {
+        inner: &raw mut STDIN,
+    }
 }
 
 impl Stdin {
     pub fn set(&self, file: File) -> sys::Result<()> {
-        self.inner.set(Mutex::new(file)).or(Err(AlreadyExists))
+        unsafe { (*self.inner).set(Mutex::new(file)).or(Err(AlreadyExists)) }
     }
     pub fn replace(&mut self, src: &File) -> sys::Result<()> {
-        File::dup2(src, &mut self.inner.get().unwrap().lock())
+        unsafe { File::dup2(src, &mut (*self.inner).get().unwrap().lock()) }
     }
 
     pub fn read_line(&mut self, buf: &mut String) -> sys::Result<usize> {
-        let mut char: [u8; 1] = [0];
+        let mut byte: [u8; 1] = [0];
         let mut bytes: Vec<u8> = Vec::new();
         loop {
-            let cc = self.read(&mut char)?;
+            let cc = self.read(&mut byte)?;
             if cc < 1 {
                 break;
             }
-            bytes.extend_from_slice(&char);
-            if char[0] == b'\n' || char[0] == b'\r' {
+            bytes.extend_from_slice(&byte);
+            if byte[0] == b'\n' || byte[0] == b'\r' {
                 break;
             }
         }
@@ -51,62 +53,72 @@ impl Stdin {
 
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> sys::Result<usize> {
-        self.inner
-            .get_or_init(|| Mutex::new(unsafe { File::from_raw_fd(STDIN_FILENO) }))
-            .lock()
-            .read(buf)
+        unsafe {
+            (*self.inner)
+                .get_or_init(|| Mutex::new(File::from_raw_fd(STDIN_FILENO)))
+                .lock()
+                .read(buf)
+        }
     }
 }
 
 pub struct Stdout {
-    inner: &'static mut OnceLock<Mutex<File>>,
+    inner: *mut OnceLock<Mutex<File>>,
 }
 
 pub fn stdout() -> Stdout {
-    unsafe { Stdout { inner: &mut STDOUT } }
+    Stdout {
+        inner: &raw mut STDOUT,
+    }
 }
 
 impl Stdout {
     pub fn set(&self, file: File) -> sys::Result<()> {
-        self.inner.set(Mutex::new(file)).or(Err(AlreadyExists))
+        unsafe { (*self.inner).set(Mutex::new(file)).or(Err(AlreadyExists)) }
     }
     pub fn replace(&mut self, src: &File) -> sys::Result<()> {
-        File::dup2(src, &mut self.inner.get().unwrap().lock())
+        unsafe { File::dup2(src, &mut (*self.inner).get().unwrap().lock()) }
     }
 }
 
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> sys::Result<usize> {
-        self.inner
-            .get_or_init(|| Mutex::new(unsafe { File::from_raw_fd(STDOUT_FILENO) }))
-            .lock()
-            .write(buf)
+        unsafe {
+            (*self.inner)
+                .get_or_init(|| Mutex::new(File::from_raw_fd(STDOUT_FILENO)))
+                .lock()
+                .write(buf)
+        }
     }
 }
 
 pub struct Stderr {
-    inner: &'static mut OnceLock<Mutex<File>>,
+    inner: *mut OnceLock<Mutex<File>>,
 }
 
 pub fn stderr() -> Stderr {
-    unsafe { Stderr { inner: &mut STDERR } }
+    Stderr {
+        inner: &raw mut STDERR,
+    }
 }
 
 impl Stderr {
     pub fn set(&self, file: File) -> sys::Result<()> {
-        self.inner.set(Mutex::new(file)).or(Err(AlreadyExists))
+        unsafe { (*self.inner).set(Mutex::new(file)).or(Err(AlreadyExists)) }
     }
     pub fn replace(&mut self, src: &File) -> sys::Result<()> {
-        File::dup2(src, &mut self.inner.get().unwrap().lock())
+        unsafe { File::dup2(src, &mut (*self.inner).get().unwrap().lock()) }
     }
 }
 
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> sys::Result<usize> {
-        self.inner
-            .get_or_init(|| Mutex::new(unsafe { File::from_raw_fd(STDERR_FILENO) }))
-            .lock()
-            .write(buf)
+        unsafe {
+            (*self.inner)
+                .get_or_init(|| Mutex::new(File::from_raw_fd(STDERR_FILENO)))
+                .lock()
+                .write(buf)
+        }
     }
 }
 
@@ -164,8 +176,7 @@ macro_rules! eprintln {
 pub fn panic_output() -> Option<&'static mut impl io::Write> {
     unsafe {
         Some(
-            stderr()
-                .inner
+            (*stderr().inner)
                 .get_or_init(|| Mutex::new(File::from_raw_fd(STDERR_FILENO)))
                 .get_mut(),
         )

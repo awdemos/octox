@@ -104,7 +104,11 @@ pub fn exec(
                 if phdr.p_msize < phdr.p_fsize {
                     return Err(ExecFileFormatError);
                 }
-                if phdr.p_vaddr + phdr.p_msize < phdr.p_msize {
+                if phdr
+                    .p_vaddr
+                    .checked_add(phdr.p_msize)
+                    .map_or(true, |sum| sum < phdr.p_msize)
+                {
                     return Err(ExecFileFormatError);
                 }
                 if phdr.p_vaddr % PGSIZE != 0 {

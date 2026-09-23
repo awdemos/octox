@@ -78,6 +78,17 @@ pub fn var(key: &str) -> Result<&'static str, VarError> {
         .ok_or(VarError::NotPresent)
 }
 
+/// Returns the inherited environment as a read-only slice without creating a
+/// shared reference to the mutable static itself.
+pub fn as_slice() -> Option<&'static [Option<&'static str>]> {
+    unsafe {
+        match &ENVIRON {
+            Some(slice) => Some(core::slice::from_raw_parts(slice.as_ptr(), slice.len())),
+            None => None,
+        }
+    }
+}
+
 pub fn set_var(key: &str, value: &str) -> sys::Result<()> {
     let mut new_key_value = key.to_string();
     new_key_value.push('=');
@@ -92,7 +103,7 @@ pub fn set_var(key: &str, value: &str) -> sys::Result<()> {
                         key_val.replace(new_key_value);
                         return Ok(());
                     }
-                    Some(_) => {},
+                    Some(_) => {}
                     None => {
                         key_val.replace(new_key_value);
                         return Ok(());
@@ -113,7 +124,7 @@ pub fn remove_var(key: &str) -> sys::Result<()> {
                         key_val.take();
                         return Ok(());
                     }
-                    Some(_) | None => {},
+                    Some(_) | None => {}
                 }
             }
         }

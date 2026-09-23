@@ -1,14 +1,24 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
 
 extern crate alloc;
 
+use core::alloc::Layout;
 use core::sync::atomic::{AtomicBool, Ordering};
 use kernel::{
     bio, console, kalloc, kmain, null, plic, println,
     proc::{self, scheduler, user_init, Cpus},
     trap, virtio_disk, vm,
 };
+
+#[global_allocator]
+static KMEM: kalloc::Kmem = kalloc::Kmem::new();
+
+#[alloc_error_handler]
+fn on_oom(layout: Layout) -> ! {
+    panic!("alloc error: {:?}", layout)
+}
 
 static STARTED: AtomicBool = AtomicBool::new(false);
 
@@ -23,7 +33,7 @@ extern "C" fn main() -> ! {
         println!("octox kernel is booting");
         println!("");
         null::init(); // null device init
-        kalloc::init(); // physical memory allocator
+        kalloc::init(&KMEM); // physical memory allocator
         vm::kinit(); // create kernel page table
         vm::kinithart(); // turn on paging
         proc::init(); // process table

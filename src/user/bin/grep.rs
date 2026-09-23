@@ -9,7 +9,7 @@ fn main() {
     let len = args.len();
     let mut args = args.skip(1);
     let Some(pat) = args.next() else {
-        panic!("usage: grep patern [file ...]")
+        panic!("usage: grep pattern [file ...]")
     };
 
     if len < 3 {

@@ -8,7 +8,7 @@ use alloc::{
 };
 
 use crate::{
-    env::{self, ENVIRON},
+    env::{self},
     fs::{File, OpenOptions},
     io::{Read, Write},
     path::Path,
@@ -308,15 +308,17 @@ impl<'a> Command<'a> {
                 .map(|s| Some(s.as_str()))
                 .collect::<Vec<Option<&str>>>()
         });
-        let envp: Option<&[Option<&str>]> = binding.as_deref().or(unsafe { ENVIRON.as_deref() });
+        let envp: Option<&[Option<&str>]> = if let Some(ref b) = binding {
+            Some(b.as_slice())
+        } else {
+            env::as_slice()
+        };
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let (mut input, mut output) = pipe::pipe()?;
         let pid = self.do_fork()?;
         if pid == 0 {
             drop(input);
-            let Err(err) = self.do_exec(theirs, envp) else {
-                unreachable!()
-            };
+            let err = self.do_exec(theirs, envp).unwrap_err();
             let err = (err as isize).to_be_bytes();
             output.write(&err).unwrap();
             sys::exit(1);
@@ -488,16 +490,35 @@ impl Child {
 #[derive(Debug)]
 pub struct ChildStdin(File);
 
+impl Write for ChildStdin {
+    fn write(&mut self, buf: &[u8]) -> sys::Result<usize> {
+        self.0.write(buf)
+    }
+}
+
 #[derive(Debug)]
 pub struct ChildStdout(File);
+
+impl Read for ChildStdout {
+    fn read(&mut self, buf: &mut [u8]) -> sys::Result<usize> {
+        self.0.read(buf)
+    }
+}
 
 impl From<ChildStdout> for Stdio {
     fn from(value: ChildStdout) -> Self {
         Stdio::Fd(value.0)
     }
 }
+
 #[derive(Debug)]
 pub struct ChildStderr(File);
+
+impl Read for ChildStderr {
+    fn read(&mut self, buf: &mut [u8]) -> sys::Result<usize> {
+        self.0.read(buf)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Output {

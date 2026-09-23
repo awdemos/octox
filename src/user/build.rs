@@ -6,7 +6,10 @@ use std::{
 };
 
 fn main() {
-    let root_out_dir = PathBuf::from(std::env::var("ROOT_OUT_DIR").unwrap());
+    let root_out_dir = match std::env::var("ROOT_OUT_DIR") {
+        Ok(dir) => PathBuf::from(dir),
+        Err(_) => PathBuf::from(std::env::var("OUT_DIR").unwrap()),
+    };
 
     // copy etc/_* to root_out_dir/etc
     let src_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("etc");
@@ -21,7 +24,7 @@ fn main() {
     // build syscall interface file usys.rs
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let mut usys_rs =
-        File::create(out_dir.join("usys.rs")).expect("cloudn't create OUT_DIR/usys.rs");
+        File::create(out_dir.join("usys.rs")).expect("couldn't create OUT_DIR/usys.rs");
     usys_rs
         .write_all("// Created by build.rs\n\n".as_bytes())
         .expect("OUT_DIR/usys.rs: write error");
@@ -41,7 +44,6 @@ fn main() {
 
 fn copy_files(src_dir: &Path, dst_dir: &Path, prefix: Option<&str>) -> io::Result<()> {
     if !src_dir.exists() {
-        // nothing to do
         return Ok(());
     }
     if !dst_dir.exists() {
@@ -52,7 +54,7 @@ fn copy_files(src_dir: &Path, dst_dir: &Path, prefix: Option<&str>) -> io::Resul
         let entry_path = entry.path();
         let dst_path = dst_dir.join(entry.file_name());
         if entry_path.is_dir() {
-            todo!()
+            copy_files(&entry_path, &dst_path, prefix)?;
         } else {
             let should_copy = match (prefix, entry_path.file_name().and_then(|s| s.to_str())) {
                 (Some(prefix), Some(name)) if name.starts_with(prefix) => true,

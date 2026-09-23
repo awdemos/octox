@@ -1,9 +1,6 @@
 #![no_std]
 extern crate alloc;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use ulib::{
     env, eprint, eprintln,
     fs::{File, OpenOptions},
@@ -27,7 +24,7 @@ fn main() {
             break;
         }
     }
-    set_path_fron_etc_paths().unwrap();
+    set_path_from_etc_paths().unwrap();
 
     // read and run input commands.
     'main: loop {
@@ -144,7 +141,7 @@ fn main() {
     }
 }
 
-fn set_path_fron_etc_paths() -> sys::Result<()> {
+fn set_path_from_etc_paths() -> sys::Result<()> {
     let path_file = "/etc/paths";
     if Path::new(path_file).exists() {
         let file = BufReader::new(File::open(path_file)?);
@@ -160,7 +157,7 @@ fn set_path_fron_etc_paths() -> sys::Result<()> {
             }
         }
         let new_path = paths.join(":");
-        env::set_var("PATH", &new_path);
+        env::set_var("PATH", &new_path).unwrap();
     }
     Ok(())
 }

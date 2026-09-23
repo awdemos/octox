@@ -18,6 +18,7 @@ repository = "https://github.com/o8vm/octox"
 [[bin]]
 name = "octox"
 path = "src/kernel/main.rs"
+test = false
 
 [workspace]
 members = [
@@ -30,4 +31,4 @@ members = [
 libkernel = { path = "src/kernel", default-features = false }
 
 [dependencies]
-libkernel = { workspace = true, features = ["kernel"] }
+libkernel = { workspace = true, features = ["kernel"], default-features = false }

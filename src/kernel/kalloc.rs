@@ -12,15 +12,13 @@ extern "C" {
     static mut end: [u8; 0];
 }
 
-#[global_allocator]
-pub static KMEM: Kmem = Kmem(Mutex::new(BuddyAllocator::new(), "kmem"));
-
-#[alloc_error_handler]
-fn on_oom(layout: Layout) -> ! {
-    panic!("alloc error: {:?}", layout)
-}
-
 pub struct Kmem(Mutex<BuddyAllocator>);
+
+impl Kmem {
+    pub const fn new() -> Self {
+        Self(Mutex::new(BuddyAllocator::new(), "kmem"))
+    }
+}
 
 unsafe impl GlobalAlloc for Kmem {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -35,8 +33,8 @@ unsafe impl GlobalAlloc for Kmem {
 }
 
 #[allow(static_mut_refs)]
-pub fn init() {
+pub fn init(kmem: &Kmem) {
     unsafe {
-        KMEM.0.lock().init(end.as_ptr() as usize, PHYSTOP).unwrap();
+        kmem.0.lock().init(end.as_ptr() as usize, PHYSTOP).unwrap();
     }
 }

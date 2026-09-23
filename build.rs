@@ -1,5 +1,8 @@
 use std::{
-    fs, io::Result, path::{Path, PathBuf}, process::Command
+    fs,
+    io::Result,
+    path::{Path, PathBuf},
+    process::Command,
 };
 
 fn main() {
@@ -69,7 +72,9 @@ fn build_uprogs(out_dir: &Path) -> (PathBuf, Vec<PathBuf>) {
         let dirs = ["bin", "etc", "lib"];
         for dir_ent in dirs {
             let path = out_dir.join(dir_ent);
-            collet_files(&path, Some("_"));
+            if path.exists() {
+                collet_files(&path, Some("_"));
+            }
         }
         (local_path, ufiles)
     } else {

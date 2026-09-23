@@ -1,5 +1,5 @@
 use alloc::string::{String, ToString};
-use core::{fmt, todo};
+use core::fmt;
 
 use crate::{fs, sys};
 
@@ -96,7 +96,11 @@ impl Path {
     }
 
     pub fn try_exists(&self) -> sys::Result<bool> {
-        todo!()
+        match fs::metadata(self) {
+            Ok(_) => Ok(true),
+            Err(sys::Error::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn exists(&self) -> bool {

@@ -2,10 +2,20 @@ use crate::{mutex::Mutex, sys};
 use core::alloc::{GlobalAlloc, Layout};
 use core::{mem::size_of, ptr::NonNull};
 
+#[cfg(target_os = "none")]
 #[global_allocator]
 static UMEM: UMem = UMem(Mutex::new(Allocator::new()));
 
+#[cfg(target_os = "none")]
+#[alloc_error_handler]
+fn on_oom(layout: Layout) -> ! {
+    panic!("alloc error: {:?}", layout)
+}
+
+#[cfg(target_os = "none")]
 struct UMem(Mutex<Allocator>);
+
+#[cfg(target_os = "none")]
 unsafe impl GlobalAlloc for UMem {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.0.lock().alloc(layout)
@@ -15,29 +25,30 @@ unsafe impl GlobalAlloc for UMem {
     }
 }
 
-#[alloc_error_handler]
-fn on_oom(layout: Layout) -> ! {
-    panic!("alloc error: {:?}", layout)
-}
-
+#[cfg(target_os = "none")]
 struct Allocator {
     base: Header,
     freep: Option<NonNull<Header>>,
 }
+
+#[cfg(target_os = "none")]
 unsafe impl Send for Allocator {}
 
+#[cfg(target_os = "none")]
 #[repr(C, align(16))]
 struct Header {
     ptr: Option<NonNull<Header>>,
     size: usize,
 }
 
+#[cfg(target_os = "none")]
 impl Header {
     const fn new() -> Self {
         Self { ptr: None, size: 0 }
     }
 }
 
+#[cfg(target_os = "none")]
 impl Allocator {
     const fn new() -> Self {
         Self {
@@ -124,4 +135,15 @@ impl Allocator {
         }
         self.freep = p;
     }
+}
+
+#[cfg(not(target_os = "none"))]
+struct UMem;
+
+#[cfg(not(target_os = "none"))]
+unsafe impl GlobalAlloc for UMem {
+    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+        core::ptr::null_mut()
+    }
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }

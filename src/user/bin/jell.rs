@@ -1,5 +1,5 @@
 #![no_std]
-
+#![allow(dead_code)]
 extern crate alloc;
 
 use core::cell::RefCell;
@@ -281,7 +281,6 @@ impl Lexer {
         }
         let x = &self.input[pos..self.pos];
         let numeral = x.iter().collect::<String>();
-        numeral.parse::<isize>();
         if has_decimal {
             let f = numeral
                 .parse::<f64>()
@@ -461,11 +460,10 @@ fn is_special_symbol(c: char) -> bool {
 
 fn repl() {
     let mut line = String::new();
-    let mut input = String::new();
     let mut env = Environment::new();
     let mut paren_stack: Vec<Token> = vec![];
     let mut tokens: Vec<Token> = vec![];
-    let mut evaluator = Evaluator::new();
+    let evaluator = Evaluator::new();
     loop {
         print!("user=> ");
         for _ in 0..paren_stack.len() {
@@ -513,7 +511,6 @@ fn repl() {
         tokens.append(&mut toks.clone());
 
         if paren_stack.len() == 0 {
-            input = "".to_string();
             if tokens.len() > 0 {
                 let mut parser = Parser::new(tokens);
                 match parser.parse() {
@@ -521,7 +518,7 @@ fn repl() {
                         Ok(expr) => println!("{}", expr),
                         Err(err) => eprintln!("error: {:?}", err),
                     },
-                    Err(err) => panic!(),
+                    Err(_err) => panic!(),
                 }
                 tokens = vec![];
                 println!("")
@@ -533,7 +530,7 @@ fn repl() {
 fn exec_file(file: &str) -> Result<Expr, Error> {
     let mut file = File::open(file).unwrap();
     let mut program = "".to_string();
-    file.read_to_string(&mut program);
+    let _ = file.read_to_string(&mut program);
 
     let mut lexer = Lexer::new(program.as_str());
     let tokens = lexer.tokenize()?;
@@ -562,7 +559,7 @@ fn main() {
     if args.len() == 0 {
         repl()
     } else {
-        exec_file(args[0]);
+        let _ = exec_file(args[0]);
     }
 }
 
